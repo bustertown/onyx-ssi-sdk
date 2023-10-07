@@ -173,7 +173,7 @@ describe('jsonld utilities', () => {
         );
     });
 
-    fit('SignVP successfully signs a jsonld proof', async () => {
+    it('SignVP successfully signs a jsonld proof', async () => {
         const jsonldService = new JSONLDService();
 
         const vpResult = await jsonldService.signVP(didWithKeys, VP_PAYLOAD, {
