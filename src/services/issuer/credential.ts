@@ -15,7 +15,6 @@ import {
     VerifiableCredential,
 } from 'did-jwt-vc';
 import { JWTPayload } from 'did-jwt';
-import { isString } from 'lodash';
 
 /**
  * Creates a {@link CredentialPayload} from supplied Issuer DID, subject DID,
@@ -49,7 +48,7 @@ export function createCredential(
 
     credential['@context'] = [DEFAULT_CONTEXT];
     if (additionalProperties && additionalProperties['@context']) {
-        isString(additionalProperties['@context'])
+        typeof additionalProperties['@context'] === 'string'
             ? credential['@context'].push(additionalProperties['@context'])
             : credential['@context'].concat(additionalProperties['@context']);
     }
@@ -152,6 +151,25 @@ export async function createAndSignCredentialJWT(
     return await jwtService.signVC(issuer, payload, options);
 }
 
+/**
+ * Creates a Verifiable Credential JSONLD from {@link DIDWithKeys} and
+ * required properties of the Verifiable Credential
+ *
+ * This method first creates the Credential object from the DID of the Issuer, the DID of the subject,
+ * the credentialType and the credentialSubject. This object becomes the payload that is added to the
+ * [JSON-LD spec as described](https://www.w3.org/TR/json-ld11/). This function also adds the `SCHEMA_CONTEXT`.
+ * For use with other contexts that may overlap, use `createCredential` and `JSONLDService.signVC` directly.
+ *
+ * The `DIDWithKeys` is used to sign the JSONLD that encodes the Verifiable Credential.
+ *
+ * @param issuer
+ * @param subjectDID
+ * @param credentialSubject
+ * @param credentialType
+ * @param additionalProperties
+ * @param options
+ * @returns
+ */
 export async function createAndSignCredentialJSONLD(
     issuer: DIDWithKeys,
     subjectDID: DID,
@@ -165,7 +183,7 @@ export async function createAndSignCredentialJSONLD(
         '@context':
             additionalProperties &&
             additionalProperties['@context'] !== undefined
-                ? isString(additionalProperties['@context'])
+                ? typeof additionalProperties['@context'] === 'string'
                     ? [additionalProperties['@context'], SCHEMA_CONTEXT]
                     : [...additionalProperties['@context'], SCHEMA_CONTEXT]
                 : [SCHEMA_CONTEXT],

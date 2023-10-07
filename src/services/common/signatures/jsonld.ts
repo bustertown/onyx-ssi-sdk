@@ -14,6 +14,7 @@ import { DIDWithKeys } from '../did/did';
 import { SignatureService } from './signatures';
 import { KEY_ALG, KeyUtils } from '../../../utils';
 import { ContextManager } from '../schemas';
+import { isString } from 'lodash';
 
 export class JSONLDService implements SignatureService {
     /**
@@ -28,7 +29,7 @@ export class JSONLDService implements SignatureService {
         token: CredentialPayload,
         _configs?: CreateCredentialOptions | undefined,
     ): Promise<string> {
-        const key = await this.createEd25519VerificationKey(keys);
+        const key = await this.#createEd25519VerificationKey(keys);
 
         const { id, type, issuer, issuanceDate, credentialSubject } = token;
 
@@ -80,14 +81,29 @@ export class JSONLDService implements SignatureService {
         token: PresentationPayload,
         configs?: CreatePresentationOptions | undefined,
     ): Promise<string> {
-        const { type, holder } = token;
+        const { type, holder, verifiableCredential } = token;
+
+        if (verifiableCredential?.length === 0) {
+            throw new Error('Missing verifiable credential');
+        }
+
+        // If it is a string we can assume it is JWT and we need to decode it.
+        if (isString(verifiableCredential?.[0])) {
+            throw new Error(
+                'JWT token is insufficient data for the presentation.',
+            );
+        }
+
+        const vc = verifiableCredential?.[0] as VerifiableCredential;
+
         const presentation = {
             '@context': token['@context'],
             type,
             holder,
+            verifiableCredential: vc,
         };
 
-        const key = await this.createEd25519VerificationKey(keys);
+        const key = await this.#createEd25519VerificationKey(keys);
         const documentLoader = new ContextManager().createDocumentLoader();
 
         if (!configs?.challenge) {
@@ -119,7 +135,7 @@ export class JSONLDService implements SignatureService {
      * @param keys `DIDWithKeys` to use in signing the credential.
      * @returns `Ed25519VerificationKey2018` the verification key to sign the credential.
      */
-    async createEd25519VerificationKey(
+    async #createEd25519VerificationKey(
         keys: DIDWithKeys,
     ): Promise<Ed25519VerificationKey2018> {
         const { did, keyPair } = keys;
